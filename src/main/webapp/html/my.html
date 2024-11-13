@@ -5,7 +5,57 @@
     <link href="/css/my.css" rel="stylesheet">
 </head>
 <body>
-<h1>RPG admin panel</h1>
+<h1>RPG admin panel TEST</h1>
+
+<table id="playersTable">
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Title</th>
+        <th>Race</th>
+        <th>Profession</th>
+        <th>Level</th>
+        <th>Birthday</th>
+        <th>Banned</th>
+    </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<script>
+    $(document).ready(function() {
+        loadPlayers();
+    });
+
+    function loadPlayers() {
+        $.ajax({
+            url: '/rest/players',
+            method: 'GET',
+            success: function(data) {
+                var tableBody = $('#playersTable tbody');
+                tableBody.empty(); // Очищаем существующие данные
+
+                $.each(data, function(i, player) {
+                    var row = $('<tr>');
+                    row.append($('<td>').text(player.id));
+                    row.append($('<td>').text(player.name));
+                    row.append($('<td>').text(player.title));
+                    row.append($('<td>').text(player.race));
+                    row.append($('<td>').text(player.profession));
+                    row.append($('<td>').text(player.level));
+                    row.append($('<td>').text(new Date(player.birthday).toLocaleDateString()));
+                    row.append($('<td>').text(player.banned ? 'true' : 'false'));
+                    tableBody.append(row);
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading players:', error);
+            }
+        });
+    }
+</script>
 
 </body>
 </html>
