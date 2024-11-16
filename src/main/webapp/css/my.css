@@ -1,3 +1,58 @@
+.action-icon {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.action-icon:hover {
+    opacity: 0.7;
+}
+
+#pageControl {
+    margin-bottom: 20px;
+}
+
+#pageControl label {
+    margin-right: 10px;
+}
+
+#pageSize {
+    padding: 5px;
+}
+
+#pagination {
+    margin-top: 20px;
+    text-align: center;
+}
+
+#pagination button, #pagination span {
+    margin: 0 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+#pagination span.pageNumber {
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+#pagination span.pageNumber:hover {
+    background-color: #f1f1f1;
+}
+
+#currentPage {
+    display: inline-block;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 3px;
+}
+
+#currentPage.active {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+}
+
 #playersTable {
     border-collapse: separate;
     border-spacing: 0;

@@ -1,11 +1,21 @@
 <html>
 <head>
     <title>RPG</title>
-    <script src=https://code.jquery.com/jquery-3.6.0.min.js></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="/css/my.css" rel="stylesheet">
 </head>
 <body>
 <h1>RPG admin panel TEST</h1>
+
+<div id="pageControl">
+    <label for="pageSize">Count per page:</label>
+    <select id="pageSize">
+        <option value="3">3</option>
+        <option value="10">10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+    </select>
+</div>
 
 <table id="playersTable">
     <thead>
@@ -18,24 +28,75 @@
         <th>Level</th>
         <th>Birthday</th>
         <th>Banned</th>
+        <th>Edit</th>
+        <th>Delete</th>
     </tr>
     </thead>
     <tbody>
     </tbody>
 </table>
 
+<div id="pagination">
+    <button id="prevPage">Previous</button>
+    <!-- Номера страниц будут добавляться здесь динамически -->
+    <button id="nextPage">Next</button>
+</div>
+
 <script>
+    let currentPage = 0;
+    let totalPlayers = 0;
+    let pageSize = 3;
+
     $(document).ready(function() {
-        loadPlayers();
+        loadTotalPlayers();
+
+        $('#pageSize').change(function() {
+            pageSize = parseInt($(this).val());
+            currentPage = 0;
+            loadPlayers(currentPage);
+        });
+
+        $('#prevPage').click(function() {
+            if (currentPage > 0) {
+                currentPage--;
+                loadPlayers(currentPage);
+            }
+        });
+
+        $('#nextPage').click(function() {
+            if ((currentPage + 1) * pageSize < totalPlayers) {
+                currentPage++;
+                loadPlayers(currentPage);
+            }
+        });
+
     });
 
-    function loadPlayers() {
+    function loadTotalPlayers() {
+        $.ajax({
+            url: '/rest/players/count',
+            method: 'GET',
+            success: function(count) {
+                totalPlayers = count;
+                loadPlayers(currentPage);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading total players count:', error);
+            }
+        });
+    }
+
+    function loadPlayers(page) {
         $.ajax({
             url: '/rest/players',
             method: 'GET',
+            data: {
+                pageNumber: page,
+                pageSize: pageSize
+            },
             success: function(data) {
                 var tableBody = $('#playersTable tbody');
-                tableBody.empty(); // Очищаем существующие данные
+                tableBody.empty();
 
                 $.each(data, function(i, player) {
                     var row = $('<tr>');
@@ -47,13 +108,115 @@
                     row.append($('<td>').text(player.level));
                     row.append($('<td>').text(new Date(player.birthday).toLocaleDateString()));
                     row.append($('<td>').text(player.banned ? 'true' : 'false'));
+
+                    var editCell = $('<td>').append(
+                        $('<img>')
+                            .attr('src', '/img/edit.png')
+                            .attr('alt', 'Edit')
+                            .addClass('action-icon edit-icon')
+                            .data('player-id', player.id)
+                    );
+                    row.append(editCell);
+
+                    var deleteCell = $('<td>').append(
+                        $('<img>')
+                            .attr('src', '/img/delete.png')
+                            .attr('alt', 'Delete')
+                            .addClass('action-icon delete-icon')
+                            .data('player-id', player.id)
+                    );
+                    row.append(deleteCell);
+
                     tableBody.append(row);
+                });
+
+                currentPage = page;
+                updatePagination();
+
+                $('.edit-icon').click(function() {
+                    var playerId = $(this).data('player-id');
+                    editPlayer(playerId);
+                });
+
+                $('.delete-icon').click(function() {
+                    var playerId = $(this).data('player-id');
+                    deletePlayer(playerId);
                 });
             },
             error: function(xhr, status, error) {
                 console.error('Error loading players:', error);
             }
         });
+    }
+
+    function updatePagination() {
+        let totalPages = Math.ceil(totalPlayers / pageSize);
+        let paginationHtml = '';
+
+        for (let i = 0; i < totalPages; i++) {
+            if (i === currentPage) {
+                paginationHtml += `<span id="currentPage" class="active">${i + 1}</span>`;
+            } else {
+                paginationHtml += `<span class="pageNumber" data-page="${i}">${i + 1}</span>`;
+            }
+        }
+
+        $('#pagination').html(paginationHtml);
+        $('#prevPage').prop('disabled', currentPage === 0);
+        $('#nextPage').prop('disabled', (currentPage + 1) * pageSize >= totalPlayers);
+
+        $('.pageNumber').click(function() {
+            currentPage = parseInt($(this).data('page'));
+            loadPlayers(currentPage);
+        });
+    }
+
+    function editPlayer(playerId) {
+        console.log('Editing player with ID:', playerId);
+
+
+        var row = $('img[data-player-id="' + playerId + '"]').closest('tr');
+
+
+        var editIcon = row.find('.edit-icon');
+        var deleteIcon = row.find('.delete-icon');
+
+        if (editIcon.attr('src') === '/img/edit.png') {
+
+            editIcon.attr('src', '/img/save.png');
+            editIcon.attr('alt', 'Save');
+
+
+            deleteIcon.hide();
+        } else {
+
+            editIcon.attr('src', '/img/edit.png');
+            editIcon.attr('alt', 'Edit');
+
+
+            deleteIcon.show();
+
+
+            console.log('Saving changes for player with ID:', playerId);
+        }
+    }
+
+    function deletePlayer(playerId) {
+        if (confirm('Are you sure you want to delete this player?')) {
+            $.ajax({
+                url: '/rest/players/' + playerId,
+                method: 'DELETE',
+                success: function(response) {
+                    console.log('Player deleted successfully');
+                    loadPlayers(currentPage);
+                    loadTotalPlayers();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error deleting player:', error);
+                    alert('Failed to delete player. Please try again.');
+                }
+            });
+        }
     }
 </script>
 
