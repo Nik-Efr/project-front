@@ -42,6 +42,41 @@
     <button id="nextPage">Next</button>
 </div>
 
+<hr>
+
+<div id="createAccount">
+    <h2>Create New Account</h2>
+    <label for="newName">Name (1-12 characters):</label>
+    <input type="text" id="newName" maxlength="12" required>
+
+    <label for="newTitle">Title (1-30 characters):</label>
+    <input type="text" id="newTitle" maxlength="30" required>
+
+    <label for="newRace">Race:</label>
+    <select id="newRace">
+        <!-- Опции будут добавлены динамически через JavaScript -->
+    </select>
+
+    <label for="newProfession">Profession:</label>
+    <select id="newProfession">
+        <!-- Опции будут добавлены динамически через JavaScript -->
+    </select>
+
+    <label for="newLevel">Level (0-100):</label>
+    <input type="number" id="newLevel" min="0" max="100" required>
+
+    <label for="newBirthday">Birthday:</label>
+    <input type="date" id="newBirthday" required>
+
+    <label for="newBanned">Banned:</label>
+    <select id="newBanned">
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+    </select>
+
+    <button id="createAccountButton">Create Account</button>
+</div>
+
 <script>
     let currentPage = 0;
     let totalPlayers = 0;
@@ -171,34 +206,83 @@
         });
     }
 
+
     function editPlayer(playerId) {
-        console.log('Editing player with ID:', playerId);
+        // Найдите строку игрока по ID
+        const row = $('#playersTable tbody tr').filter(function() {
+            return $(this).find('td').eq(0).text() == playerId; // Сравниваем ID
+        });
 
+        if (row.length > 0) {
+            // Получаем текущее состояние полей
+            const nameCell = row.find('td').eq(1);
+            const titleCell = row.find('td').eq(2);
+            const raceCell = row.find('td').eq(3);
+            const professionCell = row.find('td').eq(4);
+            const bannedCell = row.find('td').eq(7);
 
-        var row = $('img[data-player-id="' + playerId + '"]').closest('tr');
+            // Проверяем, редактируется ли уже игрок
+            if (nameCell.find('input').length === 0) {
+                // Скрываем кнопку "Delete"
+                row.find('.delete-icon').hide();
 
+                // Заменяем текстовые ячейки на поля ввода
+                nameCell.html(`<input type="text" value="${nameCell.text()}">`);
+                titleCell.html(`<input type="text" value="${titleCell.text()}">`);
+                raceCell.html(`<input type="text" value="${raceCell.text()}">`);
+                professionCell.html(`<input type="text" value="${professionCell.text()}">`);
+                bannedCell.html(`
+                <select>
+                    <option value="true" ${bannedCell.text() === 'true' ? 'selected' : ''}>Yes</option>
+                    <option value="false" ${bannedCell.text() === 'false' ? 'selected' : ''}>No</option>
+                </select>
+            `);
 
-        var editIcon = row.find('.edit-icon');
-        var deleteIcon = row.find('.delete-icon');
+                // Изменяем изображение кнопки "Edit" на "Save"
+                const editIcon = row.find('.edit-icon');
+                editIcon.attr('src', '/img/save.png');  // Изменяем путь к изображению на "Save"
+                editIcon.attr('alt', 'Save');
 
-        if (editIcon.attr('src') === '/img/edit.png') {
-
-            editIcon.attr('src', '/img/save.png');
-            editIcon.attr('alt', 'Save');
-
-
-            deleteIcon.hide();
-        } else {
-
-            editIcon.attr('src', '/img/edit.png');
-            editIcon.attr('alt', 'Edit');
-
-
-            deleteIcon.show();
-
-
-            console.log('Saving changes for player with ID:', playerId);
+                // Устанавливаем обработчик для сохранения изменений
+                editIcon.off('click').on('click', function() {
+                    savePlayer(playerId, row);
+                });
+            }
         }
+    }
+
+    function savePlayer(playerId, row) {
+        // Собираем данные из полей ввода
+        const name = row.find('td:eq(1) input').val();
+        const title = row.find('td:eq(2) input').val();
+        const race = row.find('td:eq(3) input').val();
+        const profession = row.find('td:eq(4) input').val();
+        const banned = row.find('td:eq(7) select').val() === 'true';
+
+        // Формируем объект для отправки
+        const playerData = {
+            name: name,
+            title: title,
+            race: race,
+            profession: profession,
+            banned: banned
+        };
+
+        // Отправляем данные на сервер для обновления
+        $.ajax({
+            url: '/rest/players/' + playerId, // Используем POST-запрос на указанный URL
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(playerData), // Преобразуем объект в JSON строку
+            success: function(response) {
+                console.log('Player updated successfully');
+                loadPlayers(currentPage); // Перезагружаем игроков
+            },
+            error: function(xhr, status, error) {
+                console.error('Error updating player:', error);
+                alert('Failed to update player. Please try again.');
+            }
+        });
     }
 
     function deletePlayer(playerId) {
@@ -217,6 +301,103 @@
                 }
             });
         }
+    }
+
+    $(document).ready(function() {
+        // Загрузка доступных рас и профессий при загрузке страницы
+        loadRacesAndProfessions();
+
+        // Обработчик клика по кнопке создания аккаунта
+        $('#createAccountButton').click(function() {
+            createAccount();
+        });
+    });
+
+    function loadRacesAndProfessions() {
+        // Загрузка доступных рас
+        $.ajax({
+            url: '/rest/players/races', // URL для получения списка рас
+            method: 'GET',
+            success: function(data) {
+                const raceSelect = $('#newRace');
+                $.each(data, function(i, race) {
+                    raceSelect.append($('<option>').text(race).attr('value', race)); // Используем значение перечисления
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading races:', error);
+                alert('Failed to load races. Please try again.');
+            }
+        });
+
+        // Загрузка доступных профессий
+        $.ajax({
+            url: '/rest/players/professions', // URL для получения списка профессий
+            method: 'GET',
+            success: function(data) {
+                const professionSelect = $('#newProfession');
+                $.each(data, function(i, profession) {
+                    professionSelect.append($('<option>').text(profession).attr('value', profession)); // Используем значение перечисления
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading professions:', error);
+                alert('Failed to load professions. Please try again.');
+            }
+        });
+    }
+
+    function createAccount() {
+        const name = $('#newName').val();
+        const title = $('#newTitle').val();
+        const race = $('#newRace').val();
+        const profession = $('#newProfession').val();
+        const level = parseInt($('#newLevel').val());
+        const birthday = new Date($('#newBirthday').val()).getTime(); // Преобразуем дату в миллисекунды
+        const banned = $('#newBanned').val() === 'true';
+
+        // Проверка валидности данных
+        if (!name || !title || level < 0 || level > 100 || isNaN(birthday)) {
+            alert('Please fill in all fields correctly.');
+            return;
+        }
+
+        const newPlayerData = {
+            name: name,
+            title: title,
+            race: race,
+            profession: profession,
+            birthday: birthday,
+            banned: banned,
+            level: level
+        };
+
+        // Отправляем POST запрос для создания нового аккаунта
+        $.ajax({
+            url: '/rest/players', // URL для создания нового игрока
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(newPlayerData),
+            success: function(response) {
+                console.log('Account created successfully');
+                loadPlayers(currentPage); // Перезагружаем список игроков
+                clearCreateForm(); // Очищаем форму после успешного создания
+            },
+            error: function(xhr, status, error) {
+                console.error('Error creating account:', error);
+                alert('Failed to create account. Please try again.');
+            }
+        });
+    }
+
+    function clearCreateForm() {
+        $('#newName').val('');
+        $('#newTitle').val('');
+        $('#newRace').val('');
+        $('#newProfession').val('');
+        $('#newLevel').val(0);
+        $('#newBirthday').val('');
+        $('#newBanned').val('false');
     }
 </script>
 
